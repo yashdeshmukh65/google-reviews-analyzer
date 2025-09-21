@@ -1,0 +1,59 @@
+{
+  "reviews": [
+    {
+      "reviewer_name": "John Smith",
+      "rating": 5,
+      "review_text": "Excellent service and great food! The staff was very friendly and the atmosphere was perfect for a family dinner. The pizza was cooked to perfection and arrived hot.",
+      "review_date": "2 weeks ago"
+    },
+    {
+      "reviewer_name": "Sarah Johnson",
+      "rating": 4,
+      "review_text": "Good experience overall. The food was tasty but the wait time was a bit long during peak hours. Would recommend for the quality of ingredients used.",
+      "review_date": "1 month ago"
+    },
+    {
+      "reviewer_name": "Mike Davis",
+      "rating": 3,
+      "review_text": "Average experience. The food was okay but nothing special. Service could be improved and the place could use some renovation.",
+      "review_date": "3 weeks ago"
+    },
+    {
+      "reviewer_name": "Emily Wilson",
+      "rating": 5,
+      "review_text": "Amazing place! Best pizza in town. Fast delivery service and food always arrives hot. The online ordering system is very user-friendly. Highly recommended!",
+      "review_date": "1 week ago"
+    },
+    {
+      "reviewer_name": "David Brown",
+      "rating": 2,
+      "review_text": "Disappointing experience. Food was cold when delivered and customer service was poor. Had to wait 45 minutes longer than estimated delivery time.",
+      "review_date": "2 months ago"
+    },
+    {
+      "reviewer_name": "Lisa Garcia",
+      "rating": 4,
+      "review_text": "Nice restaurant with good ambiance. Food quality is consistently good but prices are a bit high compared to similar places in the area.",
+      "review_date": "3 days ago"
+    },
+    {
+      "reviewer_name": "Tom Anderson",
+      "rating": 5,
+      "review_text": "Excellent food and service! Will definitely come back. The pasta dishes are incredible and the wine selection is impressive.",
+      "review_date": "1 week ago"
+    },
+    {
+      "reviewer_name": "Maria Rodriguez",
+      "rating": 1,
+      "review_text": "Terrible experience. Food was cold, service was extremely slow, and the restaurant was not clean. Would not recommend to anyone.",
+      "review_date": "1 month ago"
+    }
+  ],
+  "business_info": {
+    "name": "Mario's Italian Restaurant",
+    "url": "https://maps.google.com/maps/place/Mario's+Italian+Restaurant",
+    "scraped_at": "2024-01-15T14:30:25.123456",
+    "total_reviews_found": 8,
+    "average_rating": 3.6
+  }
+}

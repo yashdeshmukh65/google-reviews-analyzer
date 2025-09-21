@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+python-multipart
+google-generativeai
+pandas
+python-dotenv
+plotly
+wordcloud
+matplotlib
