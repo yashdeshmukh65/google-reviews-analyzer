@@ -16,11 +16,19 @@ try:
 except ImportError:
     WORDCLOUD_AVAILABLE = False
 
-load_dotenv()
+# Load .env only if available (for local development)
+try:
+    load_dotenv()
+except:
+    pass
 
 class CSVReviewAnalyzer:
     def __init__(self):
-        genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
+        # Get API key from environment (works for both local .env and Render env vars)
+        api_key = os.getenv('GEMINI_API_KEY')
+        if not api_key:
+            raise ValueError("GEMINI_API_KEY not found in environment variables")
+        genai.configure(api_key=api_key)
         self.model = genai.GenerativeModel('gemini-1.5-flash')
         self.df = None
         self.business_name = ""

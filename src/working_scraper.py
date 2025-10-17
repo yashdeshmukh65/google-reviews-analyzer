@@ -153,33 +153,62 @@ class WorkingScraper:
         return False
     
     def scroll_to_load_reviews(self, driver, max_reviews):
-        """Scroll to load more reviews"""
-        self.log(f"📜 Loading reviews...")
+        """Aggressively scroll to load exact number of reviews"""
+        self.log(f"📜 Loading {max_reviews} reviews...")
         
-        for scroll in range(20):
-            # Scroll down
-            driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-            time.sleep(2)
+        # Calculate scroll attempts based on target reviews
+        max_scrolls = min(60, max(25, max_reviews // 8))
+        
+        for scroll in range(max_scrolls):
+            # Multiple scroll actions per iteration
+            for _ in range(3):
+                driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+                time.sleep(0.5)
             
-            # Try to click "More" buttons
-            try:
-                more_buttons = driver.find_elements(By.CSS_SELECTOR, 'button[aria-label*="more" i], .w8nwRe')
-                for btn in more_buttons[:2]:
-                    if btn.is_displayed() and btn.is_enabled():
-                        driver.execute_script("arguments[0].click();", btn)
-                        time.sleep(1)
-            except:
-                pass
+            # Click "More" buttons aggressively
+            more_selectors = [
+                'button[aria-label*="more" i]',
+                '.w8nwRe',
+                'button[jsaction*="review"]',
+                '[data-value="Sort"] ~ button',
+                'button:contains("More")',
+                '.gws-localreviews__google-reviews button'
+            ]
             
-            # Count current reviews
-            review_count = len(driver.find_elements(By.CSS_SELECTOR, '[data-review-id]'))
-            self.log(f"  Scroll {scroll+1}: {review_count} reviews")
+            for selector in more_selectors:
+                try:
+                    buttons = driver.find_elements(By.CSS_SELECTOR, selector)
+                    for btn in buttons[:3]:  # Try more buttons
+                        if btn.is_displayed() and btn.is_enabled():
+                            driver.execute_script("arguments[0].click();", btn)
+                            time.sleep(0.3)
+                except:
+                    continue
             
+            # Count current reviews with multiple selectors
+            review_selectors = ['[data-review-id]', '.jftiEf', '.MyEned']
+            review_count = 0
+            for selector in review_selectors:
+                count = len(driver.find_elements(By.CSS_SELECTOR, selector))
+                review_count = max(review_count, count)
+            
+            self.log(f"  Scroll {scroll+1}/{max_scrolls}: {review_count} reviews (target: {max_reviews})")
+            
+            # Stop if we have enough reviews
             if review_count >= max_reviews:
+                self.log(f"✅ Reached target: {review_count} reviews")
                 break
             
-            if scroll > 5 and review_count == 0:
+            # Stop if no progress for several scrolls
+            if scroll > 15 and review_count < 10:
+                self.log("⚠️ No reviews loading, stopping")
                 break
+            
+            # Dynamic wait based on progress
+            if scroll % 10 == 0:
+                time.sleep(3)  # Longer wait every 10 scrolls
+            else:
+                time.sleep(1)
     
     def extract_all_reviews(self, driver):
         """Extract all reviews from page"""
@@ -205,7 +234,12 @@ class WorkingScraper:
         
         self.log(f"Found {len(containers)} review containers")
         
+        # Process all containers to get maximum reviews
         for i, container in enumerate(containers):
+            # Stop if we have enough reviews
+            if len(reviews) >= 500:  # Hard limit to prevent memory issues
+                break
+                
             try:
                 review = self.extract_single_review(container, driver)
                 if review:

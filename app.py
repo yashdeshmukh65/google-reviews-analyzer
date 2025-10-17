@@ -1,7 +1,25 @@
 import streamlit as st
 import pandas as pd
 from src.csv_analyzer import CSVReviewAnalyzer
-from src.working_scraper import working_scraper
+# Import scraper based on environment
+# Force Render scraper for testing (uncomment next 3 lines)
+# from src.render_scraper import render_scraper as scraper
+# SCRAPER_TYPE = "render"
+# print("🧪 TESTING: Using Render scraper locally")
+
+# Normal auto-detection (comment out when testing Render scraper)
+try:
+    # Try Render scraper first
+    from src.render_scraper import render_scraper as scraper
+    SCRAPER_TYPE = "render"
+except ImportError:
+    try:
+        # Fallback to working scraper for local
+        from src.working_scraper import working_scraper as scraper
+        SCRAPER_TYPE = "local"
+    except ImportError:
+        scraper = None
+        SCRAPER_TYPE = "none"
 import asyncio
 import os
 import json
@@ -82,7 +100,7 @@ def scraper_tab():
     
     # Initialize analyzer and scraper
     analyzer = init_scraper_analyzer()
-    scraper = working_scraper
+    # scraper already imported above
     
     # Clear data button
     if st.button("🆕 New Analysis", type="secondary"):
@@ -108,10 +126,10 @@ def scraper_tab():
     with col2:
         max_reviews = st.number_input(
             "Max Reviews",
-            min_value=10,
-            max_value=100,
-            value=50,
-            step=10
+            min_value=50,
+            max_value=500,
+            value=100,
+            step=25
         )
     
     # Scrape button
@@ -692,10 +710,21 @@ def main():
         csv_upload_tab()
 
 if __name__ == "__main__":
-    # Check for Gemini API key
-    if not os.getenv("GEMINI_API_KEY"):
-        st.error("❌ Please set your GEMINI_API_KEY in the .env file")
+    # Check for Gemini API key from environment
+    gemini_key = os.getenv("GEMINI_API_KEY")
+    if not gemini_key:
+        st.error("❌ Please set your GEMINI_API_KEY environment variable")
+        st.info("For local development, add GEMINI_API_KEY to your .env file")
+        st.info("For Render deployment, set GEMINI_API_KEY in environment variables")
         st.stop()
+    
+    # Display scraper type for debugging
+    if SCRAPER_TYPE == "render":
+        st.sidebar.success("🚀 Running on Render (Headless)")
+    elif SCRAPER_TYPE == "local":
+        st.sidebar.info("💻 Running Locally")
+    else:
+        st.sidebar.error("❌ No scraper available")
     
     # Initialize session state
     if 'scraper_user_question' not in st.session_state:
