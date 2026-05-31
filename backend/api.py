@@ -172,17 +172,20 @@ def chat_with_data(request: ChatRequest, db: Session = Depends(get_db)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database execution failed: {e}")
 
-def process_upload_task(raw_reviews: List[dict], business_url: str, db: Session):
-    cache = db.query(SearchCache).filter(SearchCache.business_url == business_url).first()
-    if not cache:
-        cache = SearchCache(business_url=business_url, status="pending")
-        db.add(cache)
-        db.commit()
-    else:
-        cache.status = "pending"
-        db.commit()
+from database import SessionLocal
 
+def process_upload_task(raw_reviews: List[dict], business_url: str):
+    db = SessionLocal()
     try:
+        cache = db.query(SearchCache).filter(SearchCache.business_url == business_url).first()
+        if not cache:
+            cache = SearchCache(business_url=business_url, status="pending")
+            db.add(cache)
+            db.commit()
+        else:
+            cache.status = "pending"
+            db.commit()
+
         cleaned_texts = [clean_text(r["review_text"]) for r in raw_reviews]
         
         from llm_service import analyze_sentiments_batch
@@ -225,6 +228,8 @@ def process_upload_task(raw_reviews: List[dict], business_url: str, db: Session)
         cache.status = "failed"
         db.commit()
         print(f"Background upload task failed: {e}")
+    finally:
+        db.close()
 
 @router.post("/upload")
 async def upload_csv_data(background_tasks: BackgroundTasks, file: UploadFile = File(...), db: Session = Depends(get_db)):
@@ -278,7 +283,7 @@ async def upload_csv_data(background_tasks: BackgroundTasks, file: UploadFile = 
             cache.status = "pending"
         db.commit()
         
-        background_tasks.add_task(process_upload_task, raw_reviews, business_url, db)
+        background_tasks.add_task(process_upload_task, raw_reviews, business_url)
         
         return {"status": "pending", "url": business_url, "count": len(raw_reviews)}
     except Exception as e:
