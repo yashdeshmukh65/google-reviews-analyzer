@@ -87,24 +87,46 @@ export default function ChatUI() {
       const formData = new FormData();
       formData.append("file", uploadFile);
       const res = await axios.post(`${API_BASE}/upload`, formData);
-      if (res.data.status === "completed") {
-         const dataRes = await axios.get(`${API_BASE}/data?url=${encodeURIComponent(res.data.url)}`);
-         if (dataRes.data && dataRes.data.length > 0) {
-            setGlobalData(dataRes.data);
-            setShowDashboard(false);
-            setDashboardMode('executive');
-            setMessages(prev => [...prev, {
-               role: 'assistant',
-               content: `✅ Successfully compiled ${dataRes.data.length} records into the memory bank! Click the prominent "Analyze Data" button in the right viewport to command the visualization matrix.`,
-            }]);
-         }
+      if (res.data.status === "pending" || res.data.status === "completed") {
+         const fileUrl = res.data.url;
+         
+         let attempts = 0;
+         const pollData = setInterval(async () => {
+           attempts++;
+           if (attempts > 100) { 
+             clearInterval(pollData);
+             setMessages(prev => [...prev, { role: 'assistant', content: 'Upload timeout. Processing took too long.' }]);
+             setIsUploading(false);
+             return;
+           }
+           try {
+             const statusRes = await axios.get(`${API_BASE}/status?url=${encodeURIComponent(fileUrl)}`);
+             if (statusRes.data && ['completed', 'failed'].includes(statusRes.data.status)) {
+               clearInterval(pollData);
+               if (statusRes.data.status === 'failed') {
+                  setMessages(prev => [...prev, { role: 'assistant', content: 'Processing failed internally.' }]);
+                  setIsUploading(false);
+                  return;
+               }
+               const dataRes = await axios.get(`${API_BASE}/data?url=${encodeURIComponent(fileUrl)}`);
+               if (dataRes.data && dataRes.data.length > 0) {
+                 setGlobalData(dataRes.data);
+                 setShowDashboard(false);
+                 setDashboardMode('executive');
+                 setMessages(prev => [...prev, { role: 'assistant', content: `✅ Successfully compiled ${dataRes.data.length} records into the memory bank! Click the prominent "Analyze Data" button in the right viewport to command the visualization matrix.` }]);
+               }
+               setIsUploading(false);
+             }
+           } catch (e) { console.warn("Polling dropped", e); }
+         }, 3000);
       } else {
          setMessages(prev => [...prev, { role: 'assistant', content: `Upload failed: ${res.data.error || "Corrupted payload."}` }]);
+         setIsUploading(false);
       }
     } catch (err) {
       setMessages(prev => [...prev, { role: 'assistant', content: `Upload error: ${err.message}` }]);
+      setIsUploading(false);
     }
-    setIsUploading(false);
   };
 
   const handleScrape = async () => {

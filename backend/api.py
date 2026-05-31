@@ -172,8 +172,62 @@ def chat_with_data(request: ChatRequest, db: Session = Depends(get_db)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database execution failed: {e}")
 
+def process_upload_task(raw_reviews: List[dict], business_url: str, db: Session):
+    cache = db.query(SearchCache).filter(SearchCache.business_url == business_url).first()
+    if not cache:
+        cache = SearchCache(business_url=business_url, status="pending")
+        db.add(cache)
+        db.commit()
+    else:
+        cache.status = "pending"
+        db.commit()
+
+    try:
+        cleaned_texts = [clean_text(r["review_text"]) for r in raw_reviews]
+        
+        from llm_service import analyze_sentiments_batch
+        sentiments = analyze_sentiments_batch(cleaned_texts)
+        
+        current_time = datetime.datetime.now()
+        for i, r in enumerate(raw_reviews):
+            norm_date = r["date"]
+            if norm_date == "Unknown":
+                norm_date = (current_time - datetime.timedelta(days=i)).strftime('%Y-%m-%d')
+                
+            db_review = Review(
+                user_name=r["user_name"],
+                rating=r["rating"],
+                review_text=r["review_text"],
+                date=norm_date,
+                sentiment=sentiments[i] if i < len(sentiments) else "Neutral",
+                business_url=business_url
+            )
+            db.add(db_review)
+        db.commit()
+
+        # Advanced Analytics Execution
+        inserted_reviews = db.query(Review).filter(Review.business_url == business_url).all()
+        try:
+            for act in get_aspect_sentiments(inserted_reviews):
+                db.add(AspectSentiment(**act))
+            for cls in get_review_clusters(inserted_reviews):
+                db.add(ReviewCluster(**cls))
+        except Exception as nlp_e:
+            print("NLP Batch Processing Error:", nlp_e)
+
+        b64_clouds = get_wordclouds_base64(inserted_reviews)
+        
+        cache.status = "completed"
+        cache.pos_wordcloud = b64_clouds.get("positive")
+        cache.neg_wordcloud = b64_clouds.get("negative")
+        db.commit()
+    except Exception as e:
+        cache.status = "failed"
+        db.commit()
+        print(f"Background upload task failed: {e}")
+
 @router.post("/upload")
-async def upload_csv_data(file: UploadFile = File(...), db: Session = Depends(get_db)):
+async def upload_csv_data(background_tasks: BackgroundTasks, file: UploadFile = File(...), db: Session = Depends(get_db)):
     try:
         content = await file.read()
         # use utf-8-sig to automatically strip Byte Order Marks (BOM) from Excel CSVs
@@ -215,52 +269,18 @@ async def upload_csv_data(file: UploadFile = File(...), db: Session = Depends(ge
         db.query(Review).filter(Review.business_url == business_url).delete()
         db.commit()
         
-        cleaned_texts = [clean_text(r["review_text"]) for r in raw_reviews]
-        
-        from llm_service import analyze_sentiments_batch
-        sentiments = analyze_sentiments_batch(cleaned_texts)
-        
-        current_time = datetime.datetime.now()
-        for i, r in enumerate(raw_reviews):
-            norm_date = r["date"]
-            if norm_date == "Unknown":
-                norm_date = (current_time - datetime.timedelta(days=i)).strftime('%Y-%m-%d')
-                
-            db_review = Review(
-                user_name=r["user_name"],
-                rating=r["rating"],
-                review_text=r["review_text"],
-                date=norm_date,
-                sentiment=sentiments[i] if i < len(sentiments) else "Neutral",
-                business_url=business_url
-            )
-            db.add(db_review)
-        db.commit()
-
-        # Advanced Analytics Execution
-        inserted_reviews = db.query(Review).filter(Review.business_url == business_url).all()
-        try:
-            for act in get_aspect_sentiments(inserted_reviews):
-                db.add(AspectSentiment(**act))
-            for cls in get_review_clusters(inserted_reviews):
-                db.add(ReviewCluster(**cls))
-        except Exception as nlp_e:
-            print("NLP Batch Processing Error:", nlp_e)
-
-        b64_clouds = get_wordclouds_base64(inserted_reviews)
-        
         # Insert cache so UI can poll natively if needed
         cache = db.query(SearchCache).filter(SearchCache.business_url == business_url).first()
         if not cache:
-            cache = SearchCache(business_url=business_url, status="completed")
+            cache = SearchCache(business_url=business_url, status="pending")
             db.add(cache)
-        
-        cache.status = "completed"
-        cache.pos_wordcloud = b64_clouds.get("positive")
-        cache.neg_wordcloud = b64_clouds.get("negative")
+        else:
+            cache.status = "pending"
         db.commit()
         
-        return {"status": "completed", "url": business_url, "count": len(raw_reviews)}
+        background_tasks.add_task(process_upload_task, raw_reviews, business_url, db)
+        
+        return {"status": "pending", "url": business_url, "count": len(raw_reviews)}
     except Exception as e:
         print(f"CSV Upload failed: {e}")
         return {"status": "failed", "error": str(e)}
