@@ -371,11 +371,16 @@ export default function ChatUI() {
                    </button>
                 </div>
              ) : (
-                <div className="flex gap-2">
-                   <input type="file" accept=".csv" onChange={(e) => setUploadFile(e.target.files[0])} className="flex-1 bg-[#1a2133] border border-slate-700 text-xs p-2 rounded-xl text-slate-300 file:bg-[#252f47] file:text-indigo-300 file:border-0 file:px-3 file:py-1 file:rounded-lg file:mr-3 hover:file:bg-[#2e3a57] transition-all cursor-pointer"/>
-                   <button onClick={handleUpload} disabled={isUploading || !uploadFile} className="bg-blue-600 hover:bg-blue-500 px-5 rounded-xl disabled:opacity-50 transition-all shadow-lg text-white">
-                      {isUploading ? <Loader2 className="w-5 h-5 animate-spin"/> : <Send className="w-5 h-5"/>}
-                   </button>
+                <div className="flex flex-col gap-3">
+                   <p className="text-xs text-slate-400 font-medium px-1">
+                      <strong className="text-blue-400">How to get data:</strong> Copy a business URL from Google Maps and scrape the reviews using an open-source tool like <a href="https://apify.com/compass/google-maps-reviews-scraper" target="_blank" rel="noreferrer" className="text-blue-300 hover:underline hover:text-blue-200 transition-colors">Apify</a>, then upload the resulting CSV here.
+                   </p>
+                   <div className="flex gap-2">
+                      <input type="file" accept=".csv" onChange={(e) => setUploadFile(e.target.files[0])} className="flex-1 bg-[#1a2133] border border-slate-700 text-xs p-2 rounded-xl text-slate-300 file:bg-[#252f47] file:text-indigo-300 file:border-0 file:px-3 file:py-1 file:rounded-lg file:mr-3 hover:file:bg-[#2e3a57] transition-all cursor-pointer"/>
+                      <button onClick={handleUpload} disabled={isUploading || !uploadFile} className="bg-blue-600 hover:bg-blue-500 px-5 rounded-xl disabled:opacity-50 transition-all shadow-lg text-white">
+                         {isUploading ? <Loader2 className="w-5 h-5 animate-spin"/> : <Send className="w-5 h-5"/>}
+                      </button>
+                   </div>
                 </div>
              )}
              {scrapeStatus && <p className="mt-3 text-[11px] font-semibold text-indigo-400 tracking-wide text-center animate-pulse">{scrapeStatus}</p>}
