@@ -124,7 +124,8 @@ export default function ChatUI() {
          setIsUploading(false);
       }
     } catch (err) {
-      setMessages(prev => [...prev, { role: 'assistant', content: `Upload error: ${err.message}` }]);
+      const targetUrl = err.config?.url || 'unknown URL';
+      setMessages(prev => [...prev, { role: 'assistant', content: `Upload error: ${err.message}. (Attempted to connect to: ${targetUrl})` }]);
       setIsUploading(false);
     }
   };
