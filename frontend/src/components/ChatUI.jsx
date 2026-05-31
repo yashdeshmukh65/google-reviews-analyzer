@@ -27,7 +27,10 @@ class ErrorBoundary extends React.Component {
   }
 }
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+const ENV_API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace(/\/+$/, '') : '';
+const API_BASE = ENV_API_URL 
+    ? (ENV_API_URL.endsWith('/api') ? ENV_API_URL : `${ENV_API_URL}/api`)
+    : 'http://localhost:8000/api';
 
 export default function ChatUI() {
   const [url, setUrl] = useState('');
